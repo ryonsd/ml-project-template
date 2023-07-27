@@ -4,7 +4,7 @@ WORKDIR /workspace
 ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 必要そうなライブラリをインストール
+# 必要なライブラリをインストール
 RUN apt-get update && apt-get install -y \
     sudo \
     build-essential \
@@ -37,28 +37,22 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# pyenvをインストール
-##環境変数の設定
-ENV HOME /root
-ENV PYENV_ROOT $HOME/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
-## pyenvでインストールするPythonのバージョンを指定
+#環境変数の設定
+ENV PYENV_ROOT /opt/pyenv
+ENV POETRY_ROOT /opt/poetry
+ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$POETRY_ROOT/bin:$PATH
+# pyenvでインストールするPythonのバージョンを指定
 ARG PYTHON_VERSION="3.11.0"
 
-RUN git clone https://github.com/pyenv/pyenv.git ~/.pyenv
-RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc && \
-    echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc && \
-    echo 'eval "$(pyenv init --path)"' >> ~/.bashrc
-RUN eval "$(pyenv init --path)"
-## 指定したPythonをインストールしグローバルで認識するように設定
-RUN pyenv install $PYTHON_VERSION && \
+# pyenvをインストール
+RUN git clone https://github.com/pyenv/pyenv.git $PYENV_ROOT && \
+    eval "$(pyenv init --path)" && \
+    pyenv install $PYTHON_VERSION && \
     pyenv global $PYTHON_VERSION
 
 # poetryをインストール
-RUN curl -sSL https://install.python-poetry.org | python -
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=$POETRY_ROOT python -
 
-## 依存関係をコピーしインストール
-ENV PATH /root/.local/bin:$PATH
 COPY ./pyproject.toml /workspace/
 RUN poetry config virtualenvs.create false \
   && poetry install --no-interaction --no-ansi
